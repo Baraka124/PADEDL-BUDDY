@@ -6,6 +6,7 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <title>VÍBORA PRO // Active Event Engine</title>
   
+  <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -15,7 +16,7 @@
           colors: {
             brand: { 400: '#a3e635', 500: '#84cc16' },
             surface: { 950: '#090b0e', 900: '#0f141c', 850: '#141b24', 800: '#1a2332', 700: '#283548' },
-            ios: { card: '#1c1c1e', orange: '#ff9f0a', blue: '#0a84ff', red: '#ff453a' }
+            ios: { orange: '#ff9f0a', blue: '#0a84ff', red: '#ff453a' }
           },
           fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['"JetBrains Mono"', 'monospace'] }
         }
@@ -23,6 +24,8 @@
     }
   </script>
 
+  <!-- Supabase & Icons -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
 
@@ -31,243 +34,459 @@
     .court-glass { background: linear-gradient(135deg, rgba(15, 20, 28, 0.85) 0%, rgba(9, 11, 14, 0.95) 100%); backdrop-filter: blur(25px); }
     .ios-btn { transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.1), inset 0 -1px 0.5px rgba(0,0,0,0.4); }
     .ios-btn:active { transform: scale(0.96); }
+    .ios-btn-brand { background: linear-gradient(180deg, #bef264 0%, #a3e635 100%); box-shadow: 0 2px 8px rgba(163,230,53,0.35), inset 0 1px 1px rgba(255,255,255,0.6), inset 0 -1.5px 1px rgba(0,0,0,0.2); }
     .progress-bar-glow { box-shadow: 0 0 15px rgba(163, 230, 53, 0.5); }
     ::-webkit-scrollbar { display: none; }
   </style>
 </head>
 
-<body class="text-slate-100 min-h-screen antialiased flex flex-col font-sans pb-20">
+<body class="text-slate-100 min-h-screen antialiased flex flex-col font-sans pb-20 overflow-hidden" id="appBody">
 
-  <!-- TOP HEADER -->
-  <header class="border-b border-surface-800/80 bg-surface-950/80 backdrop-blur-xl sticky top-0 z-40">
-    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px]">
-          <div class="w-full h-full bg-surface-950 rounded-[11px] flex items-center justify-center">
-            <i data-lucide="zap" class="w-5 h-5 text-brand-400"></i>
-          </div>
+  <!-- AUDIO HAPTICS -->
+  <script>
+    const AudioContext = window.AudioContext || window.webkitAudioContext;
+    let audioCtx = null;
+    function playHaptic(type = 'click') {
+      try {
+        if (!audioCtx) audioCtx = new AudioContext();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator(); const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        const now = audioCtx.currentTime;
+        if (type === 'click') { osc.type = 'triangle'; osc.frequency.setValueAtTime(320, now); osc.frequency.exponentialRampToValueAtTime(120, now + 0.04); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04); osc.start(now); osc.stop(now + 0.04); }
+        else if (type === 'hit') { osc.type = 'sine'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(60, now + 0.08); gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08); osc.start(now); osc.stop(now + 0.08); }
+        else if (type === 'success') { osc.type = 'triangle'; osc.frequency.setValueAtTime(520, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); gain.gain.setValueAtTime(0.25, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12); osc.start(now); osc.stop(now + 0.12); }
+      } catch (e) { }
+    }
+  </script>
+
+  <!-- AUTH GATE -->
+  <div id="authGate" class="fixed inset-0 bg-surface-950 z-[100] flex flex-col items-center justify-center p-6 transition-opacity duration-500">
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(163,230,53,0.1)_0%,rgba(0,0,0,1)_80%)] pointer-events-none"></div>
+    <div class="court-glass border border-surface-800 rounded-3xl w-full max-w-md p-8 shadow-2xl relative z-10 text-center">
+      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px] mb-6">
+        <div class="w-full h-full bg-surface-950 rounded-[15px] flex items-center justify-center">
+          <i data-lucide="zap" class="w-8 h-8 text-brand-400"></i>
+        </div>
+      </div>
+      <h1 class="text-3xl font-black text-white tracking-tight mb-2">VÍBORA PRO</h1>
+      <p class="text-sm text-slate-400 font-mono mb-8">AUTHENTICATION REQUIRED</p>
+      
+      <form onsubmit="handleAuth(event)" class="space-y-4 text-left">
+        <div>
+          <label class="text-[11px] font-mono font-bold uppercase text-slate-400 block mb-1">Email</label>
+          <input id="authEmail" type="email" required placeholder="player@squad.com" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-400 transition" />
         </div>
         <div>
-          <span class="text-base font-black tracking-wider text-white">VÍBORA</span>
-          <span class="text-[10px] font-mono px-1.5 rounded bg-brand-400/10 text-brand-400 font-bold border border-brand-400/20">ADMIN</span>
+          <label class="text-[11px] font-mono font-bold uppercase text-slate-400 block mb-1">Passkey</label>
+          <input id="authPassword" type="password" required placeholder="••••••••" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-400 transition" />
         </div>
-      </div>
-
-      <!-- ADMIN: GENESIS BUTTON -->
-      <button onclick="openGenesisModal()" class="ios-btn bg-brand-400 text-black font-extrabold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-brand-400/20">
-        <i data-lucide="siren" class="w-4 h-4"></i>
-        <span>SUMMON SQUAD</span>
-      </button>
+        <div class="pt-4 space-y-3">
+          <button type="submit" onclick="document.getElementById('authMode').value='login'" class="ios-btn-brand w-full text-black font-extrabold px-4 py-3.5 rounded-xl text-sm tracking-wide">INITIALIZE SESSION</button>
+          <button type="submit" onclick="document.getElementById('authMode').value='register'" class="ios-btn w-full bg-surface-800 border border-surface-700 text-white font-bold px-4 py-3.5 rounded-xl text-sm tracking-wide">REGISTER ATHLETE</button>
+        </div>
+        <input type="hidden" id="authMode" value="login" />
+      </form>
     </div>
-  </header>
+  </div>
 
-  <!-- FOCUS MODE VIEWPORT -->
-  <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
-
-    <!-- ACTIVE SUMMONS CARD -->
-    <section class="court-glass border border-surface-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
-      <!-- Glow Effect -->
-      <div class="absolute -top-20 -right-20 w-64 h-64 bg-brand-400/10 blur-3xl rounded-full pointer-events-none"></div>
-
-      <div class="relative z-10 flex flex-col md:flex-row justify-between gap-6">
-        
-        <!-- Left: Event Details -->
-        <div class="space-y-4 flex-1">
-          <div class="flex items-center gap-2">
-            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-ios-orange/10 text-ios-orange border border-ios-orange/20 animate-pulse">
-              Gathering Players
-            </span>
-            <span class="text-xs text-slate-400 font-mono">ID: SUMMONS-094</span>
+  <!-- MAIN APP -->
+  <div id="mainApp" class="hidden flex-col w-full h-full">
+    
+    <!-- HEADER -->
+    <header class="border-b border-surface-800/80 bg-surface-950/80 backdrop-blur-xl sticky top-0 z-40">
+      <div class="max-w-5xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px]">
+            <div class="w-full h-full bg-surface-950 rounded-[11px] flex items-center justify-center">
+              <i data-lucide="zap" class="w-5 h-5 text-brand-400"></i>
+            </div>
           </div>
-          
           <div>
-            <h2 class="text-3xl font-black text-white tracking-tight">Sunday Padel Clash</h2>
-            <p class="text-sm text-slate-400 font-mono mt-2 flex items-center gap-2">
-              <i data-lucide="calendar-clock" class="w-4 h-4 text-brand-400"></i> Sun, Oct 4 • 10:30 AM
-            </p>
-            <p class="text-sm text-slate-400 font-mono mt-1 flex items-center gap-2">
-              <i data-lucide="map-pin" class="w-4 h-4 text-brand-400"></i> Vigo Padel Center
-            </p>
+            <span class="text-base font-black tracking-wider text-white">VÍBORA</span>
+            <span id="adminBadge" class="hidden text-[10px] font-mono px-1.5 rounded bg-ios-orange/10 text-ios-orange font-bold border border-ios-orange/20">ADMIN</span>
           </div>
         </div>
 
-        <!-- Right: The Ultimatum Toggle (Roll Call) -->
-        <div class="bg-surface-950/60 border border-surface-800 rounded-2xl p-5 flex flex-col justify-center w-full md:w-72">
-          <h3 class="text-xs font-mono font-bold uppercase text-slate-400 text-center mb-4">Your Status</h3>
-          <div class="flex gap-2">
-            <button onclick="setStatus('in')" id="btnIn" class="ios-btn flex-1 bg-surface-800 hover:bg-brand-500 hover:text-black text-white font-bold py-3 rounded-xl text-sm transition-all border border-surface-700">
-              I'M IN
-            </button>
-            <button onclick="setStatus('out')" id="btnOut" class="ios-btn flex-1 bg-surface-800 hover:bg-ios-red hover:text-white text-white font-bold py-3 rounded-xl text-sm transition-all border border-surface-700">
-              OUT
-            </button>
-          </div>
-
-          <!-- The Third Set Poll (Appears when IN) -->
-          <div id="gastronomyPoll" class="hidden mt-4 pt-4 border-t border-surface-800">
-            <h3 class="text-[10px] font-mono font-bold uppercase text-amber-400 text-center mb-2 flex justify-center items-center gap-1">
-              <span>🍻</span> The Third Set Vote
-            </h3>
-            <select class="w-full bg-surface-900 border border-surface-700 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none">
-              <option>Taberna Da Vila (Tapas)</option>
-              <option>Bar Central (Calamari)</option>
-              <option>El Puerto (Beers only)</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Roll Call Progress Bar -->
-      <div class="mt-8 relative z-10">
-        <div class="flex justify-between text-xs font-mono font-bold text-slate-400 mb-2">
-          <span>Squad Roll Call</span>
-          <span class="text-brand-400">6 / 8 Confirmed</span>
-        </div>
-        <div class="w-full h-3 bg-surface-950 rounded-full border border-surface-800 overflow-hidden flex">
-          <!-- 6/8 = 75% -->
-          <div class="h-full bg-brand-400 progress-bar-glow w-[75%] transition-all duration-1000"></div>
-        </div>
-        <div class="flex justify-between mt-2 text-[9px] font-mono text-slate-500">
-          <span>Pitch 1 (4P)</span>
-          <span>Pitch 2 (8P)</span>
-        </div>
-      </div>
-    </section>
-
-    <!-- ROSTER MATRIX & MERCENARY CONTROL -->
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      
-      <!-- Core Group Status -->
-      <section class="court-glass border border-surface-800 rounded-3xl p-6 shadow-lg">
-        <div class="flex justify-between items-center mb-4">
-          <h3 class="text-xs font-mono font-bold uppercase text-slate-400">Locked Pairs</h3>
-          <button class="ios-btn bg-surface-900 border border-surface-700 text-brand-400 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1">
-            <i data-lucide="dices" class="w-3 h-3"></i> SCRAMBLE ROULETTE
+        <div class="flex items-center gap-2">
+          <button onclick="playHaptic('click'); openScoreboardModal()" class="ios-btn bg-surface-800 text-white px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 border border-surface-700">
+            <i data-lucide="tv" class="w-3.5 h-3.5 text-ios-orange"></i><span class="hidden sm:inline">Umpire</span>
+          </button>
+          <button onclick="playHaptic('success'); openLogModal()" class="ios-btn bg-brand-400 text-black font-extrabold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5">
+            <i data-lucide="check-circle" class="w-4 h-4"></i><span class="hidden sm:inline">Log Result</span>
+          </button>
+          <button id="btnGenesis" onclick="openGenesisModal()" class="hidden ios-btn bg-surface-900 border border-surface-700 text-brand-400 font-bold px-3 py-2 rounded-xl text-xs">
+            <i data-lucide="siren" class="w-4 h-4"></i>
+          </button>
+          <button onclick="signOut()" class="ios-btn bg-surface-900 border border-surface-700 text-slate-400 hover:text-white px-3 py-2 rounded-xl">
+            <i data-lucide="log-out" class="w-4 h-4"></i>
           </button>
         </div>
+      </div>
+    </header>
+
+    <!-- VIEWPORT -->
+    <main class="flex-1 max-w-5xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6 overflow-y-auto">
+
+      <!-- ACTIVE SUMMONS CARD (Focus Mode) -->
+      <section class="court-glass border border-surface-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden" id="activeSummonsSection">
+        <div class="absolute -top-20 -right-20 w-64 h-64 bg-brand-400/10 blur-3xl rounded-full pointer-events-none"></div>
+
+        <div class="relative z-10 flex flex-col md:flex-row justify-between gap-6">
+          <div class="space-y-4 flex-1">
+            <div class="flex items-center gap-2">
+              <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-ios-orange/10 text-ios-orange border border-ios-orange/20 animate-pulse">Gathering Players</span>
+              <span class="text-xs text-slate-400 font-mono">NEXT FIXTURE</span>
+            </div>
+            <div>
+              <h2 class="text-3xl font-black text-white tracking-tight" id="activeEventTitle">Sunday Padel Clash</h2>
+              <p class="text-sm text-slate-400 font-mono mt-2 flex items-center gap-2"><i data-lucide="calendar-clock" class="w-4 h-4 text-brand-400"></i> <span id="activeEventDate">Loading...</span></p>
+              <p class="text-sm text-slate-400 font-mono mt-1 flex items-center gap-2"><i data-lucide="map-pin" class="w-4 h-4 text-brand-400"></i> <span id="activeEventLoc">Vigo Padel Center</span></p>
+            </div>
+          </div>
+
+          <!-- Ultimatum Toggle -->
+          <div class="bg-surface-950/60 border border-surface-800 rounded-2xl p-5 flex flex-col justify-center w-full md:w-72">
+            <h3 class="text-xs font-mono font-bold uppercase text-slate-400 text-center mb-4">Your Status</h3>
+            <div class="flex gap-2">
+              <button onclick="setStatus('in')" id="btnIn" class="ios-btn flex-1 bg-surface-800 text-white font-bold py-3 rounded-xl text-sm border border-surface-700">I'M IN</button>
+              <button onclick="setStatus('out')" id="btnOut" class="ios-btn flex-1 bg-surface-800 text-white font-bold py-3 rounded-xl text-sm border border-surface-700">OUT</button>
+            </div>
+            <div id="gastronomyPoll" class="hidden mt-4 pt-4 border-t border-surface-800">
+              <h3 class="text-[10px] font-mono font-bold uppercase text-amber-400 text-center mb-2">The Third Set Vote</h3>
+              <select id="restoVote" class="w-full bg-surface-900 border border-surface-700 rounded-lg px-3 py-2 text-xs text-white outline-none">
+                <option value="Taberna Da Vila">Taberna Da Vila (Tapas)</option>
+                <option value="Bar Central">Bar Central (Calamari)</option>
+                <option value="El Puerto">El Puerto (Beers)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Roll Call Progress -->
+        <div class="mt-8 relative z-10">
+          <div class="flex justify-between text-xs font-mono font-bold text-slate-400 mb-2">
+            <span>Squad Roll Call</span>
+            <span class="text-brand-400" id="rollCallCount">0 / 8 Confirmed</span>
+          </div>
+          <div class="w-full h-3 bg-surface-950 rounded-full border border-surface-800 overflow-hidden flex">
+            <div id="rollCallBar" class="h-full bg-brand-400 progress-bar-glow w-[0%] transition-all duration-1000"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROSTER & MERCENARY MATRIX -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         
-        <div class="space-y-2">
-          <!-- Pair 1 -->
-          <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800">
-            <div class="flex items-center gap-3">
-              <div class="flex -space-x-2">
-                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">H</div>
-                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">B</div>
-              </div>
-              <span class="text-xs font-bold text-white">Helena & Baraka</span>
-            </div>
-            <i data-lucide="check-circle-2" class="w-4 h-4 text-brand-400"></i>
+        <section class="court-glass border border-surface-800 rounded-3xl p-6 shadow-lg">
+          <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xs font-mono font-bold uppercase text-slate-400">Core Pairs</h3>
+            <button onclick="playHaptic('hit')" class="ios-btn bg-surface-900 border border-surface-700 text-brand-400 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1">
+              <i data-lucide="dices" class="w-3 h-3"></i> SCRAMBLE
+            </button>
           </div>
-          <!-- Pair 2 -->
-          <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800">
-            <div class="flex items-center gap-3">
-              <div class="flex -space-x-2">
-                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">M</div>
-                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">C</div>
-              </div>
-              <span class="text-xs font-bold text-white">Mereu & Cristian</span>
-            </div>
-            <i data-lucide="check-circle-2" class="w-4 h-4 text-brand-400"></i>
+          <div class="space-y-2">
+            <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800"><div class="flex items-center gap-3"><div class="flex -space-x-2"><div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">H</div><div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">B</div></div><span class="text-xs font-bold text-white">Helena & Baraka</span></div></div>
+            <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800"><div class="flex items-center gap-3"><div class="flex -space-x-2"><div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">M</div><div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">C</div></div><span class="text-xs font-bold text-white">Mereu & Cristian</span></div></div>
+            <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800"><div class="flex items-center gap-3"><div class="flex -space-x-2"><div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">C</div><div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">I</div></div><span class="text-xs font-bold text-white">Clara & Iker</span></div></div>
+            <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800"><div class="flex items-center gap-3"><div class="flex -space-x-2"><div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">M</div><div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">R</div></div><span class="text-xs font-bold text-white">Manu & Raquel</span></div></div>
           </div>
-          <!-- Pair 3 -->
-          <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800 opacity-50 grayscale">
-            <div class="flex items-center gap-3">
-              <div class="flex -space-x-2">
-                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-slate-400">C</div>
-                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-slate-400">I</div>
-              </div>
-              <span class="text-xs font-bold text-white">Clara & Iker</span>
-            </div>
-            <span class="text-[10px] font-mono text-ios-red border border-ios-red/30 px-2 py-0.5 rounded">OUT</span>
+        </section>
+
+        <!-- Admin Only -->
+        <section id="mercenaryPanel" class="hidden bg-surface-900 border border-ios-orange/30 rounded-3xl p-6 shadow-lg relative overflow-hidden">
+          <div class="absolute top-0 right-0 w-32 h-32 bg-ios-orange/5 blur-2xl rounded-full pointer-events-none"></div>
+          <h3 class="text-xs font-mono font-bold uppercase text-ios-orange mb-1 flex items-center gap-2"><i data-lucide="shield-alert" class="w-4 h-4"></i> Mercenary Protocol</h3>
+          <p class="text-[10px] text-slate-400 mb-4">Issue guest passes for empty slots.</p>
+          <div class="space-y-3">
+            <input type="text" id="guestName" placeholder="Enter Guest Name..." class="w-full bg-surface-950 border border-surface-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-ios-orange outline-none" />
+            <button onclick="addGuest()" class="ios-btn w-full bg-ios-orange/20 text-ios-orange border border-ios-orange/30 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider">Issue Guest Pass</button>
           </div>
+        </section>
+      </div>
+
+      <!-- FEED & LEADERBOARD -->
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div class="space-y-4">
+          <h3 class="text-xs font-mono uppercase text-slate-400 font-bold flex items-center gap-2"><i data-lucide="trophy" class="w-4 h-4 text-ios-orange"></i> Circuit Rankings</h3>
+          <div class="court-glass border border-surface-800 rounded-3xl p-5 shadow-xl" id="leaderboardList"></div>
         </div>
-      </section>
-
-      <!-- The Mercenary Market (Admin Only) -->
-      <section class="bg-surface-900 border border-ios-orange/30 rounded-3xl p-6 shadow-lg relative overflow-hidden">
-        <div class="absolute top-0 right-0 w-32 h-32 bg-ios-orange/5 blur-2xl rounded-full pointer-events-none"></div>
-        <h3 class="text-xs font-mono font-bold uppercase text-ios-orange mb-1 flex items-center gap-2">
-          <i data-lucide="shield-alert" class="w-4 h-4"></i> Mercenary Protocol
-        </h3>
-        <p class="text-[10px] text-slate-400 mb-4">Clara & Iker dropped out. 2 slots empty.</p>
-
-        <div class="space-y-3">
-          <input type="text" placeholder="Enter Guest 1 Name..." class="w-full bg-surface-950 border border-surface-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-ios-orange outline-none" />
-          <input type="text" placeholder="Enter Guest 2 Name..." class="w-full bg-surface-950 border border-surface-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-ios-orange outline-none" />
-          <button class="ios-btn w-full bg-ios-orange/20 text-ios-orange border border-ios-orange/30 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider">
-            Issue Guest Passes
-          </button>
+        <div class="lg:col-span-2 space-y-4">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-mono uppercase text-slate-400 font-bold flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4 text-brand-400"></i> Match Ledger</h3>
+          </div>
+          <div id="matchFeed" class="space-y-4"></div>
         </div>
-      </section>
+      </div>
+    </main>
+  </div>
 
-    </div>
-  </main>
-
-  <!-- GENESIS MODAL: CREATE EVENT -->
+  <!-- MODALS -->
+  <!-- 1. Genesis Modal -->
   <div id="genesisModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
     <div class="court-glass border border-surface-700 rounded-3xl w-full max-w-md p-6 shadow-2xl">
       <div class="flex justify-between items-center border-b border-surface-800 pb-4 mb-4">
         <h3 class="font-black text-xl text-white">Summon Squad</h3>
         <button onclick="closeGenesisModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
-
-      <div class="space-y-4">
-        <div>
-          <label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Event Type</label>
-          <select class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none">
-            <option>Padel Match</option>
-            <option>Social Dinner</option>
-          </select>
-        </div>
+      <form onsubmit="createEvent(event)" class="space-y-4">
+        <div><label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Event Type</label><select id="genType" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none"><option>Padel</option><option>Social</option></select></div>
         <div class="grid grid-cols-2 gap-3">
-          <div>
-            <label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Date</label>
-            <input type="date" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none" />
-          </div>
-          <div>
-            <label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Time</label>
-            <input type="time" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none" />
-          </div>
+          <div><label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Date</label><input type="date" id="genDate" required class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none" /></div>
+          <div><label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Location</label><input type="text" id="genLoc" value="Vigo Padel Center" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none" /></div>
         </div>
-        <div>
-          <label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Location</label>
-          <input type="text" value="Vigo Padel Center" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none" />
-        </div>
+        <button type="submit" class="ios-btn bg-brand-400 w-full text-black font-extrabold py-3.5 rounded-xl text-sm uppercase tracking-wider mt-2">Broadcast Summons</button>
+      </form>
+    </div>
+  </div>
 
-        <button onclick="closeGenesisModal()" class="ios-btn-brand w-full text-black font-extrabold py-3.5 rounded-xl text-sm uppercase tracking-wider mt-2">
-          Broadcast Summons
-        </button>
+  <!-- 2. Umpire Scoreboard -->
+  <div id="scoreboardModal" class="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 hidden flex items-center justify-center p-4">
+    <div class="court-glass border border-surface-700 rounded-3xl w-full max-w-lg p-6 sm:p-7 space-y-6 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-surface-800 pb-4">
+        <div><h3 class="font-black text-xl text-white">Live Scoreboard</h3></div>
+        <button onclick="closeScoreboardModal()" class="w-8 h-8 rounded-full bg-surface-800 text-slate-400 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-surface-950/70 border border-surface-800 rounded-2xl p-4 text-center space-y-3">
+          <span class="text-xs font-mono font-bold text-brand-400">TEAM A</span>
+          <div class="text-4xl font-black font-mono text-white" id="scoreTeamA">0</div>
+          <div class="text-xs font-mono text-slate-400">Games: <strong class="text-white" id="gamesTeamA">0</strong></div>
+          <button onclick="playHaptic('hit'); pointTo('A')" class="ios-btn bg-brand-400 w-full py-2.5 rounded-xl text-xs font-black text-black">+ Point A</button>
+        </div>
+        <div class="bg-surface-950/70 border border-surface-800 rounded-2xl p-4 text-center space-y-3">
+          <span class="text-xs font-mono font-bold text-ios-blue">TEAM B</span>
+          <div class="text-4xl font-black font-mono text-white" id="scoreTeamB">0</div>
+          <div class="text-xs font-mono text-slate-400">Games: <strong class="text-white" id="gamesTeamB">0</strong></div>
+          <button onclick="playHaptic('hit'); pointTo('B')" class="ios-btn bg-ios-blue w-full py-2.5 rounded-xl text-xs font-black text-white">+ Point B</button>
+        </div>
+      </div>
+      <div id="puntoDeOroBadge" class="hidden p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold text-center animate-pulse">⚡ PUNTO DE ORO</div>
+      <div class="pt-2 flex justify-between items-center border-t border-surface-800">
+        <button onclick="playHaptic('click'); resetScoreboard()" class="text-xs text-slate-500 hover:text-white font-mono">Reset</button>
+        <button onclick="closeScoreboardModal()" class="ios-btn bg-surface-800 text-white font-bold px-4 py-2 rounded-xl text-xs">Close</button>
       </div>
     </div>
   </div>
 
+  <!-- 3. Log Match Result -->
+  <div id="logModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-surface-900 border border-surface-700 rounded-3xl w-full max-w-lg p-6 space-y-5 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-surface-800 pb-4">
+        <div><h3 class="font-bold text-lg text-white">Log Ledger Result</h3></div>
+        <button onclick="closeLogModal()" class="w-8 h-8 rounded-full bg-surface-800 text-slate-400 hover:text-white flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+      </div>
+      <form id="recordForm" onsubmit="logMatch(event)" class="space-y-4">
+        <div class="grid grid-cols-2 gap-2">
+          <input id="logTeamA" required placeholder="Team A (e.g. Baraka & Helena)" class="bg-surface-950 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white" />
+          <input id="logTeamB" required placeholder="Team B (e.g. Mereu & Cristian)" class="bg-surface-950 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white" />
+        </div>
+        <input id="logScore" required placeholder="Score (e.g. 6-4, 3-6, 7-6)" class="w-full bg-surface-950 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white font-mono" />
+        <select id="logResult" class="w-full bg-surface-950 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white outline-none">
+          <option value="Team A Win">Team A Win (3 Pts)</option>
+          <option value="Team B Win">Team B Win (3 Pts)</option>
+          <option value="Draw">Friendly Draw (2 Pts Each)</option>
+        </select>
+        <textarea id="logSocial" rows="2" placeholder="The Third Set (Where did you eat?)" class="w-full bg-surface-950 border border-surface-700 rounded-xl p-2.5 text-xs text-white"></textarea>
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeLogModal()" class="ios-btn bg-surface-800 text-slate-400 px-4 py-2.5 rounded-xl text-xs">Cancel</button>
+          <button type="submit" class="ios-btn bg-brand-400 text-black font-extrabold px-6 py-2.5 rounded-xl text-xs">Save to Ledger</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- JAVASCRIPT LOGIC & SUPABASE SYNC -->
   <script>
     lucide.createIcons();
 
-    // UI Toggles for Focus Mode
-    function setStatus(status) {
-      const btnIn = document.getElementById('btnIn');
-      const btnOut = document.getElementById('btnOut');
-      const poll = document.getElementById('gastronomyPoll');
+    const SUPABASE_URL = 'https://kdgzzpwdjoohonxykqpc.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkZ3p6cHdkam9vaG9ueHlrcXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDcyMDYsImV4cCI6MjEwMzY4MzIwNn0.rdwKErSdWnJg9xFz7Po6Rg9BqLvSd4wv12vv8dwOL-k';
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-      if (status === 'in') {
-        btnIn.classList.add('bg-brand-500', 'text-black');
-        btnIn.classList.remove('bg-surface-800', 'text-white');
-        btnOut.classList.remove('bg-ios-red', 'text-white');
-        btnOut.classList.add('bg-surface-800', 'text-white');
-        poll.classList.remove('hidden'); // Unlock restaurant vote
+    let session = null;
+    let currentUser = null;
+    let activeEvent = null;
+
+    // Initialization
+    async function initApp() {
+      const { data } = await db.auth.getSession();
+      session = data.session;
+      
+      if (session) {
+        document.getElementById('authGate').classList.add('opacity-0', 'pointer-events-none');
+        setTimeout(() => document.getElementById('authGate').classList.add('hidden'), 500);
+        document.getElementById('mainApp').classList.remove('hidden');
+        document.getElementById('mainApp').classList.add('flex');
+        document.body.classList.remove('overflow-hidden');
+        
+        // Use email prefix as username for basic matching
+        currentUser = session.user.email.split('@')[0];
+        
+        // Admin God Mode logic
+        if(currentUser.toLowerCase() === 'baraka') {
+          document.getElementById('adminBadge').classList.remove('hidden');
+          document.getElementById('btnGenesis').classList.remove('hidden');
+          document.getElementById('mercenaryPanel').classList.remove('hidden');
+        }
+
+        await fetchState();
+        subscribeRealtime();
       } else {
-        btnOut.classList.add('bg-ios-red', 'text-white');
-        btnOut.classList.remove('bg-surface-800', 'text-white');
-        btnIn.classList.remove('bg-brand-500', 'text-black');
-        btnIn.classList.add('bg-surface-800', 'text-white');
-        poll.classList.add('hidden');
+        document.getElementById('authGate').classList.remove('hidden', 'opacity-0', 'pointer-events-none');
+        document.getElementById('mainApp').classList.add('hidden');
+        document.body.classList.add('overflow-hidden');
+      }
+
+      db.auth.onAuthStateChange((event, _session) => {
+        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') location.reload();
+      });
+    }
+
+    async function handleAuth(e) {
+      e.preventDefault();
+      const email = document.getElementById('authEmail').value;
+      const password = document.getElementById('authPassword').value;
+      const mode = document.getElementById('authMode').value;
+      try {
+        if (mode === 'register') {
+          const { error } = await db.auth.signUp({ email, password });
+          if (error) throw error;
+          alert('Registration successful!');
+        } else {
+          const { error } = await db.auth.signInWithPassword({ email, password });
+          if (error) throw error;
+        }
+      } catch (err) { alert(err.message); }
+    }
+
+    async function signOut() { await db.auth.signOut(); }
+
+    // Fetch Database State
+    async function fetchState() {
+      // Get latest active event
+      const { data: events } = await db.from('events').select('*').order('created_at', { ascending: false }).limit(1);
+      if(events && events.length > 0) {
+        activeEvent = events[0];
+        document.getElementById('activeEventTitle').innerText = `${activeEvent.sport_type} Clash`;
+        document.getElementById('activeEventDate').innerText = new Date(activeEvent.event_date).toLocaleDateString();
+        document.getElementById('activeEventLoc').innerText = activeEvent.location;
+
+        // Get Roll Call
+        const { data: roster } = await db.from('event_roster').select('*').eq('event_id', activeEvent.id);
+        const { data: mercs } = await db.from('mercenaries').select('*').eq('event_id', activeEvent.id);
+        
+        let inCount = (roster ? roster.filter(r => r.attendance === 'In').length : 0) + (mercs ? mercs.length : 0);
+        document.getElementById('rollCallCount').innerText = `${inCount} / 8 Confirmed`;
+        document.getElementById('rollCallBar').style.width = `${(inCount/8)*100}%`;
+
+        // User specific state
+        const myRoster = roster ? roster.find(r => r.player_name.toLowerCase() === currentUser.toLowerCase()) : null;
+        if(myRoster && myRoster.attendance === 'In') {
+          document.getElementById('btnIn').classList.replace('bg-surface-800', 'bg-brand-500');
+          document.getElementById('btnIn').classList.replace('text-white', 'text-black');
+          document.getElementById('gastronomyPoll').classList.remove('hidden');
+        }
+      }
+
+      // Get Leaderboard
+      const { data: matches } = await db.from('matches').select('*').order('created_at', { ascending: false });
+      if(matches) {
+        renderFeed(matches);
+        renderLeaderboard(matches);
       }
     }
 
-    // Modal Control
+    function subscribeRealtime() {
+      db.channel('vibora-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => fetchState())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'event_roster' }, () => fetchState())
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => fetchState())
+        .subscribe();
+    }
+
+    // Interactions
+    async function setStatus(status) {
+      if(!activeEvent) return;
+      playHaptic('click');
+      const state = status === 'in' ? 'In' : 'Out';
+      await db.from('event_roster').update({ attendance: state }).eq('event_id', activeEvent.id).eq('player_name', currentUser);
+      
+      const btnIn = document.getElementById('btnIn'); const btnOut = document.getElementById('btnOut');
+      if (status === 'in') { btnIn.classList.add('bg-brand-500', 'text-black'); btnIn.classList.remove('bg-surface-800', 'text-white'); btnOut.classList.remove('bg-ios-red'); btnOut.classList.add('bg-surface-800'); document.getElementById('gastronomyPoll').classList.remove('hidden'); } 
+      else { btnOut.classList.add('bg-ios-red', 'text-white'); btnOut.classList.remove('bg-surface-800', 'text-white'); btnIn.classList.remove('bg-brand-500', 'text-black'); btnIn.classList.add('bg-surface-800'); document.getElementById('gastronomyPoll').classList.add('hidden'); }
+    }
+
+    // Modals
     function openGenesisModal() { document.getElementById('genesisModal').classList.remove('hidden'); }
     function closeGenesisModal() { document.getElementById('genesisModal').classList.add('hidden'); }
+    
+    async function createEvent(e) {
+      e.preventDefault();
+      const newEvt = { event_type: 'Sport', sport_type: document.getElementById('genType').value, event_date: document.getElementById('genDate').value, location: document.getElementById('genLoc').value, created_by: currentUser };
+      await db.from('events').insert([newEvt]);
+      closeGenesisModal(); playHaptic('success');
+    }
+
+    async function addGuest() {
+      if(!activeEvent) return;
+      const guest = document.getElementById('guestName').value;
+      if(!guest) return;
+      await db.from('mercenaries').insert([{ event_id: activeEvent.id, guest_name: guest, added_by: currentUser }]);
+      document.getElementById('guestName').value = '';
+      playHaptic('success');
+    }
+
+    function openLogModal() { document.getElementById('logModal').classList.remove('hidden'); }
+    function closeLogModal() { document.getElementById('logModal').classList.add('hidden'); }
+    
+    async function logMatch(e) {
+      e.preventDefault();
+      if(!activeEvent) return;
+      const res = document.getElementById('logResult').value;
+      let pA = 0, pB = 0;
+      if(res === 'Team A Win') { pA = 3; pB = 1; }
+      else if(res === 'Team B Win') { pB = 3; pA = 1; }
+      else { pA = 2; pB = 2; }
+
+      const m = { event_id: activeEvent.id, team_a: document.getElementById('logTeamA').value, team_b: document.getElementById('logTeamB').value, score: document.getElementById('logScore').value, result: res, team_a_points: pA, team_b_points: pB, social: document.getElementById('logSocial').value };
+      await db.from('matches').insert([m]);
+      document.getElementById('recordForm').reset();
+      closeLogModal(); playHaptic('success');
+    }
+
+    // Render Engines
+    function renderFeed(matches) {
+      const container = document.getElementById('matchFeed');
+      container.innerHTML = matches.map(m => `
+        <div class="court-glass border border-surface-700/60 rounded-3xl p-5 space-y-3 shadow-xl">
+          <div class="flex justify-between text-xs"><span class="text-slate-400 font-mono">${new Date(m.created_at).toLocaleDateString()}</span><span class="font-mono font-bold bg-brand-400/10 text-brand-400 px-3 py-1 rounded-full border border-brand-400/20">${m.score}</span></div>
+          <div class="grid grid-cols-2 gap-3"><div class="bg-surface-950/60 border border-surface-800 rounded-2xl p-3"><span class="text-[10px] font-mono text-slate-500 block">TEAM A</span><p class="font-bold text-sm text-white">${m.team_a}</p></div><div class="bg-surface-950/60 border border-surface-800 rounded-2xl p-3"><span class="text-[10px] font-mono text-slate-500 block">TEAM B</span><p class="font-bold text-sm text-white">${m.team_b}</p></div></div>
+          ${m.social ? `<div class="bg-ios-orange/10 border-l-2 border-ios-orange rounded-r-2xl p-3 text-xs text-amber-100/90"><strong class="text-ios-orange font-mono">Third Set:</strong> ${m.social}</div>` : ''}
+        </div>
+      `).join('');
+    }
+
+    function renderLeaderboard(matches) {
+      const pts = {};
+      matches.forEach(m => {
+        m.team_a.split('&').forEach(p => { const n=p.trim(); pts[n] = (pts[n]||0) + m.team_a_points; });
+        m.team_b.split('&').forEach(p => { const n=p.trim(); pts[n] = (pts[n]||0) + m.team_b_points; });
+      });
+      const sorted = Object.entries(pts).sort((a,b) => b[1] - a[1]);
+      document.getElementById('leaderboardList').innerHTML = sorted.slice(0,5).map(([n, p], i) => `
+        <div class="flex justify-between text-sm py-2 border-b border-surface-800 last:border-0"><div class="flex gap-2.5"><span class="font-mono text-xs font-bold ${i===0?'text-ios-orange':'text-slate-500'}">0${i+1}</span><span class="font-bold text-white">${n}</span></div><span class="text-xs font-mono font-bold bg-surface-950 px-2.5 py-1 rounded-xl border border-surface-800 text-brand-400">${p} Pts</span></div>
+      `).join('');
+    }
+
+    // Scoreboard
+    const pPoints = ['0', '15', '30', '40']; let idxA = 0, idxB = 0, gA = 0, gB = 0;
+    function openScoreboardModal() { document.getElementById('scoreboardModal').classList.remove('hidden'); }
+    function closeScoreboardModal() { document.getElementById('scoreboardModal').classList.add('hidden'); }
+    function pointTo(t) { if(t==='A') { idxA++; if(idxA>3){gA++;idxA=0;idxB=0;} } else { idxB++; if(idxB>3){gB++;idxA=0;idxB=0;} } document.getElementById('scoreTeamA').innerText=pPoints[idxA]; document.getElementById('scoreTeamB').innerText=pPoints[idxB]; document.getElementById('gamesTeamA').innerText=gA; document.getElementById('gamesTeamB').innerText=gB; document.getElementById('puntoDeOroBadge').classList.toggle('hidden', !(idxA===3&&idxB===3)); }
+    function resetScoreboard() { idxA=0;idxB=0;gA=0;gB=0; pointTo('R'); }
+
+    window.onload = initApp;
   </script>
 </body>
 </html>
