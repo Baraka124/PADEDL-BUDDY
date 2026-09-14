@@ -4,10 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
-  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-  <title>VÍBORA PRO // Elite Padel Circuit & Social Ecosystem</title>
+  <title>VÍBORA PRO // Active Event Engine</title>
   
-  <!-- Tailwind CSS CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -15,690 +13,261 @@
       theme: {
         extend: {
           colors: {
-            brand: { 300: '#bef264', 400: '#a3e635', 500: '#84cc16', glow: '#ccff00' },
+            brand: { 400: '#a3e635', 500: '#84cc16' },
             surface: { 950: '#090b0e', 900: '#0f141c', 850: '#141b24', 800: '#1a2332', 700: '#283548' },
-            ios: { card: '#1c1c1e', elevated: '#2c2c2e', border: '#38383a', blue: '#0a84ff', green: '#30d158', orange: '#ff9f0a', red: '#ff453a', purple: '#bf5af2' }
+            ios: { card: '#1c1c1e', orange: '#ff9f0a', blue: '#0a84ff', red: '#ff453a' }
           },
-          fontFamily: {
-            sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
-            mono: ['"JetBrains Mono"', 'monospace']
-          }
+          fontFamily: { sans: ['Inter', 'sans-serif'], mono: ['"JetBrains Mono"', 'monospace'] }
         }
       }
     }
   </script>
 
-  <!-- Supabase JS Client -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Google Fonts & Lucide Icons -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800;900&family=JetBrains+Mono:wght@500;700;800&display=swap" rel="stylesheet">
   <script src="https://unpkg.com/lucide@latest"></script>
 
   <style>
-    body {
-      background-color: #090b0e;
-      background-image: 
-        radial-gradient(at 0% 0%, rgba(132, 204, 22, 0.06) 0px, transparent 50%),
-        radial-gradient(at 100% 100%, rgba(56, 189, 248, 0.04) 0px, transparent 50%);
-      background-attachment: fixed;
-    }
-    .court-grid { background-size: 32px 32px; background-image: linear-gradient(to right, rgba(255, 255, 255, 0.02) 1px, transparent 1px), linear-gradient(to bottom, rgba(255, 255, 255, 0.02) 1px, transparent 1px); }
-    
-    .ios-btn { position: relative; transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.1s ease; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 1px 0.5px rgba(255, 255, 255, 0.15), inset 0 -1px 0.5px rgba(0, 0, 0, 0.4); }
-    .ios-btn:active { transform: scale(0.96); box-shadow: 0 0px 1px rgba(0, 0, 0, 0.8), inset 0 1.5px 3px rgba(0, 0, 0, 0.6); }
-    .ios-btn-brand { background: linear-gradient(180deg, #bef264 0%, #a3e635 100%); box-shadow: 0 2px 8px rgba(163, 230, 53, 0.35), inset 0 1px 1px rgba(255, 255, 255, 0.6), inset 0 -1.5px 1px rgba(0, 0, 0, 0.2); }
-    .ios-btn-brand:active { transform: scale(0.96); background: linear-gradient(180deg, #a3e635 0%, #84cc16 100%); box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4); }
-    
-    .ios-segmented { background: rgba(26, 35, 50, 0.6); backdrop-filter: blur(20px); }
-    .calendar-grid { grid-template-columns: repeat(7, minmax(0, 1fr)); }
+    body { background-color: #090b0e; background-image: radial-gradient(at 50% 0%, rgba(132, 204, 22, 0.05) 0px, transparent 50%); background-attachment: fixed; }
     .court-glass { background: linear-gradient(135deg, rgba(15, 20, 28, 0.85) 0%, rgba(9, 11, 14, 0.95) 100%); backdrop-filter: blur(25px); }
-
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #283548; border-radius: 4px; }
+    .ios-btn { transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); box-shadow: inset 0 1px 0.5px rgba(255,255,255,0.1), inset 0 -1px 0.5px rgba(0,0,0,0.4); }
+    .ios-btn:active { transform: scale(0.96); }
+    .progress-bar-glow { box-shadow: 0 0 15px rgba(163, 230, 53, 0.5); }
+    ::-webkit-scrollbar { display: none; }
   </style>
 </head>
 
-<body class="text-slate-100 min-h-screen antialiased flex flex-col selection:bg-brand-500 selection:text-black font-sans pb-20 overflow-hidden" id="appBody">
-  
-  <!-- AUDIO HAPTICS -->
-  <script>
-    const AudioContext = window.AudioContext || window.webkitAudioContext;
-    let audioCtx = null;
-    function playHaptic(type = 'click') {
-      try {
-        if (!audioCtx) audioCtx = new AudioContext();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-        const osc = audioCtx.createOscillator();
-        const gain = audioCtx.createGain();
-        osc.connect(gain); gain.connect(audioCtx.destination);
-        const now = audioCtx.currentTime;
-        if (type === 'click') { osc.type = 'triangle'; osc.frequency.setValueAtTime(320, now); osc.frequency.exponentialRampToValueAtTime(120, now + 0.04); gain.gain.setValueAtTime(0.2, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.04); osc.start(now); osc.stop(now + 0.04); } 
-        else if (type === 'hit') { osc.type = 'sine'; osc.frequency.setValueAtTime(180, now); osc.frequency.exponentialRampToValueAtTime(60, now + 0.08); gain.gain.setValueAtTime(0.4, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08); osc.start(now); osc.stop(now + 0.08); } 
-        else if (type === 'success') { osc.type = 'triangle'; osc.frequency.setValueAtTime(520, now); osc.frequency.exponentialRampToValueAtTime(880, now + 0.12); gain.gain.setValueAtTime(0.25, now); gain.gain.exponentialRampToValueAtTime(0.01, now + 0.12); osc.start(now); osc.stop(now + 0.12); }
-      } catch (e) { console.log("Haptics unavailable."); }
-    }
-  </script>
+<body class="text-slate-100 min-h-screen antialiased flex flex-col font-sans pb-20">
 
-  <!-- AUTHENTICATION GATE (Covers app until logged in) -->
-  <div id="authGate" class="fixed inset-0 bg-surface-950 z-[100] flex flex-col items-center justify-center p-6 bg-cover bg-center transition-opacity duration-500">
-    <div class="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(163,230,53,0.1)_0%,rgba(0,0,0,1)_80%)] pointer-events-none"></div>
-    <div class="court-glass border border-surface-800 rounded-3xl w-full max-w-md p-8 shadow-2xl relative z-10 text-center">
-      <div class="w-16 h-16 mx-auto rounded-2xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px] shadow-lg shadow-brand-500/30 mb-6">
-        <div class="w-full h-full bg-surface-950 rounded-[15px] flex items-center justify-center">
-          <i data-lucide="zap" class="w-8 h-8 text-brand-400 fill-brand-400"></i>
+  <!-- TOP HEADER -->
+  <header class="border-b border-surface-800/80 bg-surface-950/80 backdrop-blur-xl sticky top-0 z-40">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px]">
+          <div class="w-full h-full bg-surface-950 rounded-[11px] flex items-center justify-center">
+            <i data-lucide="zap" class="w-5 h-5 text-brand-400"></i>
+          </div>
+        </div>
+        <div>
+          <span class="text-base font-black tracking-wider text-white">VÍBORA</span>
+          <span class="text-[10px] font-mono px-1.5 rounded bg-brand-400/10 text-brand-400 font-bold border border-brand-400/20">ADMIN</span>
         </div>
       </div>
-      <h1 class="text-3xl font-black text-white tracking-tight mb-2">VÍBORA PRO</h1>
-      <p class="text-sm text-slate-400 font-mono mb-8">AUTHENTICATION REQUIRED</p>
-      
-      <form onsubmit="handleAuth(event)" class="space-y-4 text-left">
-        <div>
-          <label class="text-[11px] font-mono font-bold uppercase text-slate-400 block mb-1">Email Protocol</label>
-          <input id="authEmail" type="email" required placeholder="player@squad.com" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-400 transition" />
-        </div>
-        <div>
-          <label class="text-[11px] font-mono font-bold uppercase text-slate-400 block mb-1">Secure Passkey</label>
-          <input id="authPassword" type="password" required placeholder="••••••••" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-4 py-3 text-sm text-white focus:outline-none focus:border-brand-400 transition" />
-        </div>
-        <div class="pt-4 space-y-3">
-          <button type="submit" onclick="document.getElementById('authMode').value='login'" class="ios-btn-brand w-full text-black font-extrabold px-4 py-3.5 rounded-xl text-sm tracking-wide">INITIALIZE SESSION</button>
-          <button type="submit" onclick="document.getElementById('authMode').value='register'" class="ios-btn w-full bg-surface-800 border border-surface-700 text-white font-bold px-4 py-3.5 rounded-xl text-sm tracking-wide">REGISTER NEW ATHLETE</button>
-        </div>
-        <input type="hidden" id="authMode" value="login" />
-      </form>
+
+      <!-- ADMIN: GENESIS BUTTON -->
+      <button onclick="openGenesisModal()" class="ios-btn bg-brand-400 text-black font-extrabold px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 shadow-lg shadow-brand-400/20">
+        <i data-lucide="siren" class="w-4 h-4"></i>
+        <span>SUMMON SQUAD</span>
+      </button>
     </div>
-  </div>
+  </header>
 
-  <!-- MAIN APPLICATION CONTENT (Hidden initially) -->
-  <div id="mainApp" class="hidden flex-col w-full h-full">
-    
-    <!-- TOP iOS STATUS HEADER -->
-    <header class="border-b border-surface-800/80 bg-surface-950/80 backdrop-blur-xl sticky top-0 z-40">
-      <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-        <!-- Brand & Squad Identity -->
-        <div class="flex items-center gap-3">
-          <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-brand-500 to-emerald-400 p-[1px] shadow-lg shadow-brand-500/20">
-            <div class="w-full h-full bg-surface-950 rounded-[11px] flex items-center justify-center">
-              <i data-lucide="zap" class="w-5 h-5 text-brand-400 fill-brand-400"></i>
-            </div>
-          </div>
-          <div>
-            <div class="flex items-center gap-2">
-              <span class="text-base font-black tracking-wider bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">VÍBORA</span>
-              <span class="text-[10px] font-mono px-1.5 py-0.2 rounded bg-brand-400/10 text-brand-400 font-bold border border-brand-400/20 uppercase tracking-widest">PRO</span>
-            </div>
-            <span class="text-[11px] text-slate-400 font-medium block -mt-0.5">Vigo Sunday Bandits</span>
-          </div>
-        </div>
+  <!-- FOCUS MODE VIEWPORT -->
+  <main class="flex-1 max-w-4xl w-full mx-auto px-4 sm:px-6 py-6 space-y-6">
 
-        <!-- Quick Action Controls -->
-        <div class="flex items-center gap-2 sm:gap-3">
-          <button onclick="playHaptic('click'); openScoreboardModal()" class="ios-btn bg-surface-800 hover:bg-surface-700 text-white font-semibold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5 border border-surface-700">
-            <i data-lucide="tv" class="w-3.5 h-3.5 text-ios-orange"></i>
-            <span class="hidden sm:inline">Live Scoreboard</span>
-          </button>
-          
-          <button onclick="playHaptic('success'); openLogModal()" class="ios-btn-brand text-black font-extrabold px-3.5 sm:px-4 py-2 rounded-xl text-xs flex items-center gap-1.5 tracking-tight">
-            <i data-lucide="plus-circle" class="w-4 h-4 stroke-[2.5]"></i>
-            <span class="hidden sm:inline">Log Match</span>
-          </button>
+    <!-- ACTIVE SUMMONS CARD -->
+    <section class="court-glass border border-surface-800 rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden">
+      <!-- Glow Effect -->
+      <div class="absolute -top-20 -right-20 w-64 h-64 bg-brand-400/10 blur-3xl rounded-full pointer-events-none"></div>
 
-          <!-- Auth Control -->
-          <button onclick="signOut()" class="ios-btn bg-surface-900 border border-surface-700 text-slate-400 hover:text-white px-3 py-2 rounded-xl">
-            <i data-lucide="log-out" class="w-4 h-4"></i>
-          </button>
-        </div>
-      </div>
-    </header>
-
-    <!-- MAIN VIEWPORT CONTAINER -->
-    <main class="flex-1 max-w-6xl w-full mx-auto px-4 sm:px-6 py-6 space-y-8 overflow-y-auto">
-
-      <!-- 1. SQUAD HONORS & SOCIAL BAR -->
-      <section class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <!-- Golden Racket MVP -->
-        <div class="court-glass border border-surface-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center text-lg shadow-inner">🏆</div>
-            <div>
-              <span class="text-[10px] font-mono uppercase text-amber-400 font-bold block">Golden Racket</span>
-              <span class="text-sm font-black text-white" id="goldenRacketPlayer">Loading...</span>
-              <span class="text-[10px] text-slate-400 block">Form Player</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Wooden Spoon (Cuchara) -->
-        <div class="court-glass border border-surface-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-surface-800 border border-surface-700 flex items-center justify-center text-lg shadow-inner">🥄</div>
-            <div>
-              <span class="text-[10px] font-mono uppercase text-slate-400 font-bold block">Wooden Spoon</span>
-              <span class="text-sm font-black text-white" id="woodenSpoonPlayer">Loading...</span>
-              <span class="text-[10px] text-slate-400 block">Seeking Form</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Ball Can Duty Tracker -->
-        <div class="court-glass border border-surface-800 rounded-2xl p-4 flex items-center justify-between shadow-lg">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-brand-400/10 border border-brand-400/30 flex items-center justify-center text-lg shadow-inner">🎾</div>
-            <div>
-              <span class="text-[10px] font-mono uppercase text-brand-400 font-bold block">Ball Can Duty</span>
-              <span class="text-sm font-black text-white" id="ballDutyPlayer">Marc</span>
-              <span class="text-[10px] text-slate-400 block">Next up: Head Pro S</span>
-            </div>
-          </div>
-          <button onclick="playHaptic('click'); rotateBallDuty()" class="ios-btn text-[11px] font-mono font-bold bg-surface-800 text-slate-300 px-2.5 py-1.5 rounded-lg border border-surface-700 hover:text-white">Rotate</button>
-        </div>
-      </section>
-
-      <!-- 2. FULL-MONTH INTERACTIVE CALENDAR & CONSENSUS ENGINE -->
-      <section class="relative rounded-3xl border border-surface-700/60 bg-gradient-to-b from-surface-900 via-surface-850 to-surface-900 p-6 sm:p-8 overflow-hidden shadow-2xl court-grid">
-        <div class="absolute top-0 right-0 w-96 h-96 bg-brand-400/5 blur-3xl pointer-events-none rounded-full"></div>
+      <div class="relative z-10 flex flex-col md:flex-row justify-between gap-6">
         
-        <div class="relative z-10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-surface-800 pb-5 mb-5">
-          <div>
-            <span class="text-[11px] font-mono uppercase tracking-wider text-brand-400 font-bold">Monthly Availability Consensus</span>
-            <div class="flex items-center gap-3 mt-0.5">
-              <h2 id="calendarMonthLabel" class="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">September 2026</h2>
-              <span class="text-xs font-mono bg-surface-800 px-2.5 py-1 rounded-full border border-surface-700 text-slate-300" id="monthStatsBadge">Syncing...</span>
-            </div>
-          </div>
-
+        <!-- Left: Event Details -->
+        <div class="space-y-4 flex-1">
           <div class="flex items-center gap-2">
-            <div class="ios-segmented p-1 rounded-2xl flex items-center gap-1 border border-surface-700/60">
-              <button onclick="playHaptic('click'); prevMonth()" class="ios-btn p-2 rounded-xl bg-surface-950 hover:bg-surface-800 text-slate-300"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
-              <button onclick="playHaptic('click'); resetToCurrentMonth()" class="px-3 py-1.5 rounded-xl text-xs font-bold text-white hover:bg-white/10 transition">Today</button>
-              <button onclick="playHaptic('click'); nextMonth()" class="ios-btn p-2 rounded-xl bg-surface-950 hover:bg-surface-800 text-slate-300"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
-            </div>
-            <button onclick="playHaptic('click'); openBlackoutModal()" class="ios-btn bg-ios-blue text-white font-bold px-3.5 py-2 rounded-2xl text-xs flex items-center gap-1.5 shadow-md shadow-ios-blue/20">
-              <i data-lucide="calendar-check-2" class="w-3.5 h-3.5"></i><span>My Blackouts</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="relative z-10 calendar-grid grid gap-2 text-center text-[11px] font-mono font-bold text-slate-400 uppercase">
-          <div>Mon</div><div>Tue</div><div>Wed</div><div>Thu</div><div>Fri</div><div class="text-brand-400">Sat</div><div class="text-brand-400">Sun</div>
-        </div>
-
-        <div id="calendarDaysGrid" class="relative z-10 calendar-grid grid gap-2 mt-2"></div>
-
-        <div class="relative z-10 flex flex-wrap items-center justify-between gap-3 pt-4 mt-4 border-t border-surface-800/70 text-xs font-mono text-slate-400">
-          <div class="flex items-center gap-4">
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-brand-400 shadow-[0_0_8px_rgba(163,230,53,0.6)]"></span> 2 Pitches (8P)</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-ios-blue shadow-[0_0_8px_rgba(10,132,255,0.6)]"></span> 1 Pitch (4P)</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-surface-700"></span> Deficit (&lt;4)</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- 3. ACTIVE FIXTURE INSPECTOR -->
-      <section class="court-glass border border-surface-800 rounded-3xl p-6 sm:p-7 shadow-2xl space-y-6">
-        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-5 border-b border-surface-800">
-          <div>
-            <div class="flex items-center gap-2 mb-1.5">
-              <span id="fixtureBadge" class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-brand-400/10 text-brand-400 border border-brand-400/20">Consensus</span>
-              <span class="text-xs text-slate-400 font-mono font-medium" id="selectedDateLabel">...</span>
-            </div>
-            <h2 class="text-2xl font-black text-white tracking-tight" id="fixtureCourtTitle">Vigo Padel Center • Courts 3 & 4</h2>
-          </div>
-          <div class="flex flex-wrap items-center gap-2">
-            <button onclick="playHaptic('hit'); draftNightShuffle()" class="ios-btn bg-surface-800 border border-surface-700 text-white font-mono font-bold px-3 py-2 rounded-xl text-xs flex items-center gap-1.5">
-              <i data-lucide="dice-5" class="w-3.5 h-3.5 text-ios-orange"></i><span>Draft Night</span>
-            </button>
-            <button onclick="playHaptic('click'); autoBalanceSides()" class="ios-btn bg-surface-800 border border-surface-700 text-brand-400 font-mono font-bold px-3.5 py-2 rounded-xl text-xs flex items-center gap-1.5">
-              <i data-lucide="shuffle" class="w-3.5 h-3.5"></i><span>Balance Sides</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
-          <!-- PITCH 1 -->
-          <div class="p-4 rounded-2xl bg-surface-950/70 border border-surface-800 space-y-3">
-            <div class="flex items-center justify-between text-xs font-mono font-bold text-brand-400 pb-2 border-b border-surface-800">
-              <span class="flex items-center gap-1.5"><i data-lucide="layers" class="w-3.5 h-3.5"></i> PITCH 1</span>
-              <span class="text-slate-500 font-normal">Slots 1-4</span>
-            </div>
-            <div id="pitch1Slots" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
-          </div>
-          <!-- PITCH 2 -->
-          <div class="p-4 rounded-2xl bg-surface-950/70 border border-surface-800 space-y-3">
-            <div class="flex items-center justify-between text-xs font-mono font-bold text-brand-400 pb-2 border-b border-surface-800">
-              <span class="flex items-center gap-1.5"><i data-lucide="layers" class="w-3.5 h-3.5"></i> PITCH 2</span>
-              <span class="text-slate-500 font-normal">Slots 5-8</span>
-            </div>
-            <div id="pitch2Slots" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5"></div>
-          </div>
-        </div>
-
-        <!-- WAITLIST -->
-        <div class="p-4 rounded-2xl bg-surface-950/40 border border-dashed border-surface-700 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-          <div>
-            <span class="text-xs font-mono font-bold text-ios-orange flex items-center gap-1.5 uppercase">
-              <i data-lucide="clock" class="w-3.5 h-3.5"></i> Standby Substitutes
+            <span class="px-2.5 py-0.5 rounded-full text-[10px] font-mono font-bold uppercase bg-ios-orange/10 text-ios-orange border border-ios-orange/20 animate-pulse">
+              Gathering Players
             </span>
+            <span class="text-xs text-slate-400 font-mono">ID: SUMMONS-094</span>
           </div>
-          <div id="waitlistPills" class="flex flex-wrap gap-2"></div>
+          
+          <div>
+            <h2 class="text-3xl font-black text-white tracking-tight">Sunday Padel Clash</h2>
+            <p class="text-sm text-slate-400 font-mono mt-2 flex items-center gap-2">
+              <i data-lucide="calendar-clock" class="w-4 h-4 text-brand-400"></i> Sun, Oct 4 • 10:30 AM
+            </p>
+            <p class="text-sm text-slate-400 font-mono mt-1 flex items-center gap-2">
+              <i data-lucide="map-pin" class="w-4 h-4 text-brand-400"></i> Vigo Padel Center
+            </p>
+          </div>
+        </div>
+
+        <!-- Right: The Ultimatum Toggle (Roll Call) -->
+        <div class="bg-surface-950/60 border border-surface-800 rounded-2xl p-5 flex flex-col justify-center w-full md:w-72">
+          <h3 class="text-xs font-mono font-bold uppercase text-slate-400 text-center mb-4">Your Status</h3>
+          <div class="flex gap-2">
+            <button onclick="setStatus('in')" id="btnIn" class="ios-btn flex-1 bg-surface-800 hover:bg-brand-500 hover:text-black text-white font-bold py-3 rounded-xl text-sm transition-all border border-surface-700">
+              I'M IN
+            </button>
+            <button onclick="setStatus('out')" id="btnOut" class="ios-btn flex-1 bg-surface-800 hover:bg-ios-red hover:text-white text-white font-bold py-3 rounded-xl text-sm transition-all border border-surface-700">
+              OUT
+            </button>
+          </div>
+
+          <!-- The Third Set Poll (Appears when IN) -->
+          <div id="gastronomyPoll" class="hidden mt-4 pt-4 border-t border-surface-800">
+            <h3 class="text-[10px] font-mono font-bold uppercase text-amber-400 text-center mb-2 flex justify-center items-center gap-1">
+              <span>🍻</span> The Third Set Vote
+            </h3>
+            <select class="w-full bg-surface-900 border border-surface-700 rounded-lg px-3 py-2 text-xs text-white focus:border-amber-400 outline-none">
+              <option>Taberna Da Vila (Tapas)</option>
+              <option>Bar Central (Calamari)</option>
+              <option>El Puerto (Beers only)</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Roll Call Progress Bar -->
+      <div class="mt-8 relative z-10">
+        <div class="flex justify-between text-xs font-mono font-bold text-slate-400 mb-2">
+          <span>Squad Roll Call</span>
+          <span class="text-brand-400">6 / 8 Confirmed</span>
+        </div>
+        <div class="w-full h-3 bg-surface-950 rounded-full border border-surface-800 overflow-hidden flex">
+          <!-- 6/8 = 75% -->
+          <div class="h-full bg-brand-400 progress-bar-glow w-[75%] transition-all duration-1000"></div>
+        </div>
+        <div class="flex justify-between mt-2 text-[9px] font-mono text-slate-500">
+          <span>Pitch 1 (4P)</span>
+          <span>Pitch 2 (8P)</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ROSTER MATRIX & MERCENARY CONTROL -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+      
+      <!-- Core Group Status -->
+      <section class="court-glass border border-surface-800 rounded-3xl p-6 shadow-lg">
+        <div class="flex justify-between items-center mb-4">
+          <h3 class="text-xs font-mono font-bold uppercase text-slate-400">Locked Pairs</h3>
+          <button class="ios-btn bg-surface-900 border border-surface-700 text-brand-400 px-3 py-1.5 rounded-lg text-[10px] font-bold flex items-center gap-1">
+            <i data-lucide="dices" class="w-3 h-3"></i> SCRAMBLE ROULETTE
+          </button>
+        </div>
+        
+        <div class="space-y-2">
+          <!-- Pair 1 -->
+          <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800">
+            <div class="flex items-center gap-3">
+              <div class="flex -space-x-2">
+                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">H</div>
+                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">B</div>
+              </div>
+              <span class="text-xs font-bold text-white">Helena & Baraka</span>
+            </div>
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-brand-400"></i>
+          </div>
+          <!-- Pair 2 -->
+          <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800">
+            <div class="flex items-center gap-3">
+              <div class="flex -space-x-2">
+                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">M</div>
+                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-brand-400">C</div>
+              </div>
+              <span class="text-xs font-bold text-white">Mereu & Cristian</span>
+            </div>
+            <i data-lucide="check-circle-2" class="w-4 h-4 text-brand-400"></i>
+          </div>
+          <!-- Pair 3 -->
+          <div class="flex items-center justify-between p-3 bg-surface-950/50 rounded-xl border border-surface-800 opacity-50 grayscale">
+            <div class="flex items-center gap-3">
+              <div class="flex -space-x-2">
+                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-slate-400">C</div>
+                <div class="w-8 h-8 rounded-full bg-surface-800 border-2 border-surface-900 flex items-center justify-center text-[10px] font-bold text-slate-400">I</div>
+              </div>
+              <span class="text-xs font-bold text-white">Clara & Iker</span>
+            </div>
+            <span class="text-[10px] font-mono text-ios-red border border-ios-red/30 px-2 py-0.5 rounded">OUT</span>
+          </div>
         </div>
       </section>
 
-      <!-- 4. LEADERBOARD & FEED -->
-      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div class="space-y-4">
-          <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold flex items-center gap-2"><i data-lucide="trophy" class="w-4 h-4 text-ios-orange"></i> Leaderboard</h3>
-          <div class="court-glass border border-surface-800 rounded-3xl p-5 space-y-3 shadow-xl">
-            <div class="space-y-2" id="leaderboardList"></div>
-          </div>
-        </div>
-        <div class="lg:col-span-2 space-y-4">
-          <div class="flex items-center justify-between">
-            <h3 class="text-xs font-mono uppercase tracking-wider text-slate-400 font-bold flex items-center gap-2"><i data-lucide="activity" class="w-4 h-4 text-brand-400"></i> Match History</h3>
-          </div>
-          <div id="matchFeed" class="space-y-4"></div>
-        </div>
-      </div>
-    </main>
-  </div> <!-- End Main App -->
+      <!-- The Mercenary Market (Admin Only) -->
+      <section class="bg-surface-900 border border-ios-orange/30 rounded-3xl p-6 shadow-lg relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-ios-orange/5 blur-2xl rounded-full pointer-events-none"></div>
+        <h3 class="text-xs font-mono font-bold uppercase text-ios-orange mb-1 flex items-center gap-2">
+          <i data-lucide="shield-alert" class="w-4 h-4"></i> Mercenary Protocol
+        </h3>
+        <p class="text-[10px] text-slate-400 mb-4">Clara & Iker dropped out. 2 slots empty.</p>
 
-  <!-- MODAL: BLACKOUTS -->
-  <div id="blackoutModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-surface-900 border border-surface-700 rounded-3xl w-full max-w-lg p-6 sm:p-7 space-y-5 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-surface-800 pb-4">
-        <div><h3 class="font-bold text-lg text-white">My Availability</h3></div>
-        <button onclick="closeBlackoutModal()" class="w-8 h-8 rounded-full bg-surface-800 text-slate-400 hover:text-white flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
-      </div>
-      <form onsubmit="handleBlackoutSave(event)" class="space-y-4 text-left">
-        <div>
-          <label class="text-xs font-mono font-bold uppercase text-slate-300 block mb-1.5">Profile Bound</label>
-          <select id="blackoutPlayerSelect" onchange="loadPlayerBlackouts()" class="w-full bg-surface-950 border border-surface-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-brand-400 pointer-events-none opacity-70"></select>
+        <div class="space-y-3">
+          <input type="text" placeholder="Enter Guest 1 Name..." class="w-full bg-surface-950 border border-surface-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-ios-orange outline-none" />
+          <input type="text" placeholder="Enter Guest 2 Name..." class="w-full bg-surface-950 border border-surface-700 rounded-xl px-4 py-2.5 text-xs text-white focus:border-ios-orange outline-none" />
+          <button class="ios-btn w-full bg-ios-orange/20 text-ios-orange border border-ios-orange/30 font-bold py-2.5 rounded-xl text-xs uppercase tracking-wider">
+            Issue Guest Passes
+          </button>
         </div>
-        <div class="p-4 bg-surface-950/60 border border-surface-800 rounded-2xl space-y-3">
-          <label class="flex items-center gap-2.5 text-xs text-slate-200 cursor-pointer">
-            <input type="checkbox" id="modalAnyWeekday" class="rounded bg-surface-800 border-surface-700 text-brand-400 w-4 h-4" />
-            <span>Available Mid-Week (Wed/Thu)</span>
-          </label>
-          <label class="flex items-center gap-2.5 text-xs text-slate-200 cursor-pointer">
-            <input type="checkbox" id="modalAnyWeekend" checked class="rounded bg-surface-800 border-surface-700 text-brand-400 w-4 h-4" />
-            <span>Available Weekends (Sun)</span>
-          </label>
-        </div>
-        <div class="space-y-2">
-          <label class="text-xs font-mono font-bold uppercase text-ios-red block">Blackout Dates</label>
-          <input id="blackoutDaysInput" placeholder="e.g. 13, 20" class="w-full bg-surface-950 border border-surface-700 rounded-xl px-3 py-2.5 text-sm text-white font-mono focus:border-brand-400" />
-        </div>
-        <div class="pt-2 flex justify-end gap-2">
-          <button type="button" onclick="closeBlackoutModal()" class="ios-btn bg-surface-800 text-slate-300 px-4 py-2.5 rounded-xl text-xs border border-surface-700">Cancel</button>
-          <button type="submit" class="ios-btn-brand text-black font-extrabold px-6 py-2.5 rounded-xl text-xs">Save</button>
-        </div>
-      </form>
+      </section>
+
     </div>
-  </div>
+  </main>
 
-  <!-- MODAL: LOG MATCH -->
-  <div id="logModal" class="fixed inset-0 bg-black/85 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-surface-900 border border-surface-700 rounded-3xl w-full max-w-lg p-6 sm:p-7 space-y-5 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-surface-800 pb-4">
-        <div><h3 class="font-bold text-lg text-white">Log Result</h3></div>
-        <button onclick="closeLogModal()" class="w-8 h-8 rounded-full bg-surface-800 text-slate-400 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+  <!-- GENESIS MODAL: CREATE EVENT -->
+  <div id="genesisModal" class="fixed inset-0 bg-black/90 backdrop-blur-md z-50 hidden flex items-center justify-center p-4">
+    <div class="court-glass border border-surface-700 rounded-3xl w-full max-w-md p-6 shadow-2xl">
+      <div class="flex justify-between items-center border-b border-surface-800 pb-4 mb-4">
+        <h3 class="font-black text-xl text-white">Summon Squad</h3>
+        <button onclick="closeGenesisModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
-      <form id="recordForm" onsubmit="handleFormSubmit(event)" class="space-y-4 text-left">
-        <div class="grid grid-cols-2 gap-2">
-          <input id="formPitch1Winners" required placeholder="P1 Winners" class="bg-surface-900 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white" />
-          <input id="formPitch1Score" required placeholder="P1 Score" class="bg-surface-900 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white font-mono" />
-        </div>
-        <div class="grid grid-cols-2 gap-2">
-          <input id="formPitch2Winners" required placeholder="P2 Winners" class="bg-surface-900 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white" />
-          <input id="formPitch2Score" required placeholder="P2 Score" class="bg-surface-900 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white font-mono" />
+
+      <div class="space-y-4">
+        <div>
+          <label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Event Type</label>
+          <select class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none">
+            <option>Padel Match</option>
+            <option>Social Dinner</option>
+          </select>
         </div>
         <div class="grid grid-cols-2 gap-3">
-          <input id="formDate" type="date" required class="bg-surface-950 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white" />
-          <input id="formMvp" placeholder="Session MVP" class="bg-surface-950 border border-surface-700 rounded-xl px-3 py-2 text-xs text-white" />
+          <div>
+            <label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Date</label>
+            <input type="date" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none" />
+          </div>
+          <div>
+            <label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Time</label>
+            <input type="time" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none" />
+          </div>
         </div>
-        <textarea id="formSocial" rows="2" placeholder="The Third Set (Drinks/Banter)" class="w-full bg-surface-950 border border-surface-700 rounded-xl p-2.5 text-xs text-white"></textarea>
-        <div class="pt-2 flex justify-end gap-2">
-          <button type="button" onclick="closeLogModal()" class="ios-btn bg-surface-800 text-slate-400 px-4 py-2.5 rounded-xl text-xs">Cancel</button>
-          <button type="submit" class="ios-btn-brand text-black font-extrabold px-6 py-2.5 rounded-xl text-xs">Save</button>
+        <div>
+          <label class="text-[10px] font-mono text-slate-400 uppercase block mb-1">Location</label>
+          <input type="text" value="Vigo Padel Center" class="w-full bg-surface-900 border border-surface-700 rounded-xl px-3 py-3 text-sm text-white outline-none" />
         </div>
-      </form>
-    </div>
-  </div>
 
-  <!-- MODAL: UMPIRE SCOREBOARD -->
-  <div id="scoreboardModal" class="fixed inset-0 bg-black/90 backdrop-blur-xl z-50 hidden flex items-center justify-center p-4">
-    <div class="court-glass border border-surface-700 rounded-3xl w-full max-w-lg p-6 sm:p-7 space-y-6 shadow-2xl">
-      <div class="flex justify-between items-center border-b border-surface-800 pb-4">
-        <div><h3 class="font-black text-xl text-white">Live Scoreboard</h3></div>
-        <button onclick="closeScoreboardModal()" class="w-8 h-8 rounded-full bg-surface-800 text-slate-400 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
-      </div>
-      <div class="grid grid-cols-2 gap-4">
-        <div class="bg-surface-950/70 border border-surface-800 rounded-2xl p-4 text-center space-y-3">
-          <span class="text-xs font-mono font-bold text-brand-400">TEAM A</span>
-          <div class="text-4xl font-black font-mono text-white" id="scoreTeamA">0</div>
-          <div class="text-xs font-mono text-slate-400">Games: <strong class="text-white" id="gamesTeamA">0</strong></div>
-          <button onclick="playHaptic('hit'); pointTo('A')" class="ios-btn-brand w-full py-2.5 rounded-xl text-xs font-black text-black">+ Point A</button>
-        </div>
-        <div class="bg-surface-950/70 border border-surface-800 rounded-2xl p-4 text-center space-y-3">
-          <span class="text-xs font-mono font-bold text-ios-blue">TEAM B</span>
-          <div class="text-4xl font-black font-mono text-white" id="scoreTeamB">0</div>
-          <div class="text-xs font-mono text-slate-400">Games: <strong class="text-white" id="gamesTeamB">0</strong></div>
-          <button onclick="playHaptic('hit'); pointTo('B')" class="ios-btn bg-ios-blue w-full py-2.5 rounded-xl text-xs font-black text-white">+ Point B</button>
-        </div>
-      </div>
-      <div id="puntoDeOroBadge" class="hidden p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-400 font-mono text-xs font-bold text-center animate-pulse">⚡ PUNTO DE ORO</div>
-      <div class="pt-2 flex justify-between items-center border-t border-surface-800">
-        <button onclick="playHaptic('click'); resetScoreboard()" class="text-xs text-slate-500 hover:text-white font-mono">Reset</button>
-        <button onclick="closeScoreboardModal()" class="ios-btn bg-surface-800 text-white font-bold px-4 py-2 rounded-xl text-xs">Close</button>
+        <button onclick="closeGenesisModal()" class="ios-btn-brand w-full text-black font-extrabold py-3.5 rounded-xl text-sm uppercase tracking-wider mt-2">
+          Broadcast Summons
+        </button>
       </div>
     </div>
   </div>
 
-  <!-- STATE & DATABASE ENGINE -->
   <script>
-    // 1. Initialize Supabase
-    const SUPABASE_URL = 'https://kdgzzpwdjoohonxykqpc.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtkZ3p6cHdkam9vaG9ueHlrcXBjIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgxMDcyMDYsImV4cCI6MjEwMzY4MzIwNn0.rdwKErSdWnJg9xFz7Po6Rg9BqLvSd4wv12vv8dwOL-k';
-    const db = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    lucide.createIcons();
 
-    let session = null;
-    let currentUserProfile = null;
-    
-    // Calendar & Squad State
-    let currentYear = 2026;
-    let currentMonth = 8; // Sep
-    let selectedDay = 6;
-    let ballDutyIndex = 2;
-    const ballDutyRota = ['Alex', 'Leo', 'Marc', 'Dani', 'Chris', 'Pablo'];
-    
-    let players = [];
-    let matchHistory = [];
+    // UI Toggles for Focus Mode
+    function setStatus(status) {
+      const btnIn = document.getElementById('btnIn');
+      const btnOut = document.getElementById('btnOut');
+      const poll = document.getElementById('gastronomyPoll');
 
-    // Scoreboard State
-    const pPoints = ['0', '15', '30', '40'];
-    let idxA = 0, idxB = 0, gA = 0, gB = 0;
-
-    async function initApp() {
-      lucide.createIcons();
-      document.getElementById('formDate').value = new Date().toISOString().split('T')[0];
-      
-      const { data } = await db.auth.getSession();
-      session = data.session;
-      
-      if (session) {
-        document.getElementById('authGate').classList.add('opacity-0', 'pointer-events-none');
-        setTimeout(() => document.getElementById('authGate').classList.add('hidden'), 500);
-        document.getElementById('mainApp').classList.remove('hidden');
-        document.getElementById('mainApp').classList.add('flex');
-        document.body.classList.remove('overflow-hidden');
-        await loadSquadData();
-        subscribeToCircuit();
+      if (status === 'in') {
+        btnIn.classList.add('bg-brand-500', 'text-black');
+        btnIn.classList.remove('bg-surface-800', 'text-white');
+        btnOut.classList.remove('bg-ios-red', 'text-white');
+        btnOut.classList.add('bg-surface-800', 'text-white');
+        poll.classList.remove('hidden'); // Unlock restaurant vote
       } else {
-        document.getElementById('authGate').classList.remove('hidden', 'opacity-0', 'pointer-events-none');
-        document.getElementById('mainApp').classList.add('hidden');
-        document.body.classList.add('overflow-hidden');
-      }
-
-      db.auth.onAuthStateChange((event, _session) => {
-        if (event === 'SIGNED_IN' || event === 'SIGNED_OUT') location.reload();
-      });
-    }
-
-    // Authentication Handlers
-    async function handleAuth(e) {
-      e.preventDefault();
-      const email = document.getElementById('authEmail').value;
-      const password = document.getElementById('authPassword').value;
-      const mode = document.getElementById('authMode').value;
-
-      try {
-        if (mode === 'register') {
-          const { error } = await db.auth.signUp({ email, password });
-          if (error) throw error;
-          alert('Registration successful! Connecting to Circuit...');
-        } else {
-          const { error } = await db.auth.signInWithPassword({ email, password });
-          if (error) throw error;
-        }
-      } catch (err) {
-        alert(err.message);
+        btnOut.classList.add('bg-ios-red', 'text-white');
+        btnOut.classList.remove('bg-surface-800', 'text-white');
+        btnIn.classList.remove('bg-brand-500', 'text-black');
+        btnIn.classList.add('bg-surface-800', 'text-white');
+        poll.classList.add('hidden');
       }
     }
 
-    async function signOut() {
-      await db.auth.signOut();
-    }
-
-    // Database Sync
-    async function loadSquadData() {
-      const { data: pData } = await db.from('players').select('*');
-      if (pData) {
-        players = pData.map(p => ({
-          id: p.id,
-          name: p.name,
-          pos: p.pos,
-          level: p.level,
-          hand: p.hand,
-          anyWeekday: p.any_weekday,
-          anyWeekend: p.any_weekend,
-          blackouts: []
-        }));
-        
-        currentUserProfile = players.find(p => p.id === session.user.id);
-        if(currentUserProfile) {
-          document.getElementById('blackoutPlayerSelect').innerHTML = `<option value="${currentUserProfile.name}">${currentUserProfile.name} (Active Profile)</option>`;
-        }
-      }
-
-      const { data: bData } = await db.from('blackouts').select('player_name, day').eq('year', currentYear).eq('month', currentMonth);
-      if (bData) {
-        bData.forEach(b => {
-          const pl = players.find(p => p.name === b.player_name);
-          if (pl) pl.blackouts.push(b.day);
-        });
-      }
-
-      const { data: mData } = await db.from('matches').select('id, match_date, pitch1_score, pitch2_score, mvp, social').order('created_at', { ascending: false });
-      if (mData) {
-        matchHistory = mData.map(m => ({
-          id: m.id, date: m.match_date, pitch1: m.pitch1_score, pitch2: m.pitch2_score, mvp: m.mvp, social: m.social, comments: []
-        }));
-      }
-
-      renderCalendar();
-      renderActiveDayFixture(selectedDay);
-      renderLeaderboard();
-      renderFeed();
-      lucide.createIcons();
-    }
-
-    function subscribeToCircuit() {
-      db.channel('circuit-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'matches' }, () => loadSquadData())
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'blackouts' }, () => loadSquadData())
-        .subscribe();
-    }
-
-    // Render Engines
-    function renderCalendar() {
-      const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-      document.getElementById('calendarMonthLabel').innerText = `${monthNames[currentMonth]} ${currentYear}`;
-      const firstDay = new Date(currentYear, currentMonth, 1).getDay();
-      const startingCol = (firstDay === 0 ? 6 : firstDay - 1);
-      const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-
-      const grid = document.getElementById('calendarDaysGrid');
-      grid.innerHTML = '';
-
-      for (let i = 0; i < startingCol; i++) {
-        const blank = document.createElement('div');
-        blank.className = "h-20 rounded-2xl bg-surface-950/40 border border-white/[0.02]";
-        grid.appendChild(blank);
-      }
-
-      let unlocked = 0;
-      for (let day = 1; day <= daysInMonth; day++) {
-        const dateObj = new Date(currentYear, currentMonth, day);
-        const dayOfWeek = dateObj.getDay();
-        const isWeekend = (dayOfWeek === 0 || dayOfWeek === 6);
-        const isSelected = (day === selectedDay);
-
-        const available = players.filter(p => {
-          if (p.blackouts.includes(day)) return false;
-          return isWeekend ? p.anyWeekend : p.anyWeekday;
-        });
-
-        const count = available.length;
-        if (count >= 4) unlocked++;
-
-        const cell = document.createElement('div');
-        cell.onclick = () => selectCalendarDay(day);
-        
-        let bClass = isSelected ? 'border-brand-400 ring-1 ring-brand-400' : 'border-surface-700 hover:border-slate-500';
-        let bgClass = isSelected ? 'bg-surface-800' : 'bg-surface-950/60';
-
-        cell.className = `ios-btn h-20 rounded-2xl p-2 flex flex-col justify-between cursor-pointer border ${bClass} ${bgClass} transition`;
-        cell.innerHTML = `
-          <div class="flex items-center justify-between">
-            <span class="text-xs font-mono font-bold ${isWeekend ? 'text-brand-300' : 'text-slate-400'}">${day}</span>
-            <span class="text-[10px] font-mono font-black ${count >= 8 ? 'text-brand-400' : (count >= 4 ? 'text-ios-blue' : 'text-slate-600')}">${count}P</span>
-          </div>
-          <div class="space-y-1">
-            ${count >= 8 ? `<span class="w-full text-[9px] font-mono font-bold bg-brand-400/10 border border-brand-400/20 text-brand-400 px-1 py-0.5 rounded-md block text-center truncate">2 PITCHES</span>` : 
-              count >= 4 ? `<span class="w-full text-[9px] font-mono font-bold bg-ios-blue/10 border border-ios-blue/20 text-ios-blue px-1 py-0.5 rounded-md block text-center truncate">1 PITCH</span>` : 
-              `<span class="w-full text-[9px] font-mono text-slate-600 px-1 py-0.5 block text-center truncate">DEFICIT</span>`}
-          </div>
-        `;
-        grid.appendChild(cell);
-      }
-      document.getElementById('monthStatsBadge').innerText = `${unlocked} Fixtures Ready`;
-    }
-
-    function selectCalendarDay(day) { selectedDay = day; renderCalendar(); renderActiveDayFixture(day); }
-    function prevMonth() { currentMonth--; if (currentMonth < 0) { currentMonth = 11; currentYear--; } selectedDay = 1; renderCalendar(); renderActiveDayFixture(1); }
-    function nextMonth() { currentMonth++; if (currentMonth > 11) { currentMonth = 0; currentYear++; } selectedDay = 1; renderCalendar(); renderActiveDayFixture(1); }
-    function resetToCurrentMonth() { currentYear = 2026; currentMonth = 8; selectedDay = 6; renderCalendar(); renderActiveDayFixture(6); }
-
-    function renderActiveDayFixture(day) {
-      const dateObj = new Date(currentYear, currentMonth, day);
-      const isWeekend = (dateObj.getDay() === 0 || dateObj.getDay() === 6);
-      document.getElementById('selectedDateLabel').innerText = `${dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}`;
-
-      const available = players.filter(p => {
-        if (p.blackouts.includes(day)) return false;
-        return isWeekend ? p.anyWeekend : p.anyWeekday;
-      });
-
-      const p1C = document.getElementById('pitch1Slots'); p1C.innerHTML = '';
-      for (let i = 0; i < 4; i++) p1C.appendChild(createSlotCard(available[i], i));
-
-      const p2C = document.getElementById('pitch2Slots'); p2C.innerHTML = '';
-      for (let i = 0; i < 4; i++) p2C.appendChild(createSlotCard(available[i + 4], i + 4));
-
-      const wait = document.getElementById('waitlistPills'); wait.innerHTML = '';
-      const wList = available.slice(8);
-      if (wList.length === 0) wait.innerHTML = `<span class="text-xs font-mono text-slate-500">Waitlist clear</span>`;
-      else wList.forEach((p, idx) => wait.innerHTML += `<div class="px-3 py-1 bg-surface-800 border border-ios-orange/30 rounded-xl text-xs font-mono text-ios-orange">#${idx + 1} ${p.name}</div>`);
-    }
-
-    function createSlotCard(player, index) {
-      const card = document.createElement('div');
-      if (player) {
-        const pColor = player.pos === 'Drive' ? 'text-ios-blue bg-ios-blue/10 border-ios-blue/30' : 'text-purple-400 bg-purple-500/10 border-purple-500/30';
-        card.className = "ios-btn bg-surface-900 border border-surface-700 rounded-2xl p-3 flex items-center justify-between";
-        card.innerHTML = `<div class="flex items-center gap-2.5 min-w-0"><div class="w-8 h-8 rounded-xl bg-surface-950 border border-surface-800 flex items-center justify-center font-bold text-xs text-brand-400">${player.name.charAt(0)}</div><div class="truncate"><div class="flex items-center gap-1.5"><span class="font-bold text-xs text-white">${player.name}</span></div><div class="flex items-center gap-1 mt-0.5"><span class="text-[9px] font-mono uppercase px-1 rounded border ${pColor}">${player.pos}</span></div></div></div><span class="text-[10px] font-mono text-slate-600">#0${index + 1}</span>`;
-      } else {
-        card.className = "border border-dashed border-surface-700 bg-surface-950/30 rounded-2xl p-3 flex items-center justify-center gap-1.5 text-slate-500 text-xs font-mono min-h-[56px]";
-        card.innerHTML = `<i data-lucide="plus" class="w-3.5 h-3.5"></i> Slot #${index + 1}`;
-      }
-      return card;
-    }
-
-    function draftNightShuffle() { playHaptic('hit'); renderActiveDayFixture(selectedDay); }
-    function autoBalanceSides() { playHaptic('click'); renderActiveDayFixture(selectedDay); }
-    function rotateBallDuty() { ballDutyIndex = (ballDutyIndex + 1) % ballDutyRota.length; document.getElementById('ballDutyPlayer').innerText = ballDutyRota[ballDutyIndex]; }
-
-    function renderLeaderboard() {
-      const container = document.getElementById('leaderboardList');
-      const wins = {};
-      matchHistory.forEach(m => {
-        [...m.pitch1.split('(')[0].split('&'), ...m.pitch2.split('(')[0].split('&')].forEach(w => {
-          const name = w.trim(); if(name && name !== 'undefined') wins[name] = (wins[name] || 0) + 1;
-        });
-      });
-      const sorted = Object.entries(wins).sort((a,b) => b[1] - a[1]).slice(0, 5);
-      if(sorted.length > 0) {
-        document.getElementById('goldenRacketPlayer').innerText = sorted[0][0];
-        document.getElementById('woodenSpoonPlayer').innerText = Object.entries(wins).sort((a,b) => a[1] - b[1])[0][0] || 'N/A';
-      }
-      container.innerHTML = sorted.map(([name, count], i) => `<div class="flex justify-between text-sm py-2 border-b border-surface-800 last:border-0"><div class="flex gap-2.5"><span class="font-mono text-xs font-bold ${i===0?'text-ios-orange':'text-slate-500'}">0${i+1}</span><span class="font-bold text-white">${name}</span></div><span class="text-xs font-mono font-bold bg-surface-950 px-2.5 py-1 rounded-xl border border-surface-800 text-brand-400">${count} Wins</span></div>`).join('');
-    }
-
-    function renderFeed() {
-      const container = document.getElementById('matchFeed');
-      container.innerHTML = matchHistory.map(m => `
-        <div class="court-glass border border-surface-700/60 rounded-3xl p-5 space-y-4 shadow-xl">
-          <div class="flex justify-between text-xs"><span class="text-slate-400 font-mono">${m.date}</span><span class="font-mono font-bold bg-brand-400/10 text-brand-400 px-3 py-1 rounded-full border border-brand-400/20">Logged</span></div>
-          <div class="grid grid-cols-2 gap-3"><div class="bg-surface-950/60 border border-surface-800 rounded-2xl p-3.5"><span class="text-[10px] font-mono font-bold text-brand-400 uppercase block">Pitch 1 ⚡</span><p class="font-bold text-sm text-white mt-0.5">${m.pitch1}</p></div><div class="bg-surface-950/60 border border-surface-800 rounded-2xl p-3.5"><span class="text-[10px] font-mono font-bold text-brand-400 uppercase block">Pitch 2 ⚡</span><p class="font-bold text-sm text-white mt-0.5">${m.pitch2}</p></div></div>
-          ${m.mvp ? `<div class="text-xs text-slate-300 flex items-center gap-2"><span class="text-ios-orange font-bold font-mono">MVP</span><span>${m.mvp}</span></div>` : ''}
-          <div class="bg-ios-orange/10 border-l-2 border-ios-orange rounded-r-2xl p-3 text-xs text-amber-100/90"><strong class="text-ios-orange font-mono">The 3rd Set:</strong> ${m.social}</div>
-        </div>
-      `).join('');
-    }
-
-    // Modal & DB Operations
-    function openBlackoutModal() { document.getElementById('blackoutModal').classList.remove('hidden'); loadPlayerBlackouts(); }
-    function closeBlackoutModal() { document.getElementById('blackoutModal').classList.add('hidden'); }
-    function openLogModal() { document.getElementById('logModal').classList.remove('hidden'); }
-    function closeLogModal() { document.getElementById('logModal').classList.add('hidden'); }
-
-    function loadPlayerBlackouts() {
-      if(!currentUserProfile) return;
-      document.getElementById('modalAnyWeekday').checked = currentUserProfile.anyWeekday;
-      document.getElementById('modalAnyWeekend').checked = currentUserProfile.anyWeekend;
-      document.getElementById('blackoutDaysInput').value = currentUserProfile.blackouts.join(', ');
-    }
-
-    async function handleBlackoutSave(e) {
-      e.preventDefault();
-      if(!currentUserProfile) return;
-      const days = document.getElementById('blackoutDaysInput').value.split(',').map(d => parseInt(d.trim())).filter(d => !isNaN(d));
-
-      await db.from('players').update({ any_weekday: document.getElementById('modalAnyWeekday').checked, any_weekend: document.getElementById('modalAnyWeekend').checked }).eq('name', currentUserProfile.name);
-      await db.from('blackouts').delete().eq('player_name', currentUserProfile.name).eq('year', currentYear).eq('month', currentMonth);
-      if (days.length > 0) await db.from('blackouts').insert(days.map(d => ({ player_name: currentUserProfile.name, year: currentYear, month: currentMonth, day: d })));
-      
-      closeBlackoutModal(); playHaptic('success'); loadSquadData();
-    }
-
-    async function handleFormSubmit(e) {
-      e.preventDefault();
-      const newMatch = {
-        match_date: document.getElementById('formDate').value,
-        pitch1_score: `${document.getElementById('formPitch1Winners').value} (${document.getElementById('formPitch1Score').value})`,
-        pitch2_score: `${document.getElementById('formPitch2Winners').value} (${document.getElementById('formPitch2Score').value})`,
-        mvp: document.getElementById('formMvp').value,
-        social: document.getElementById('formSocial').value
-      };
-      const { error } = await db.from('matches').insert([newMatch]);
-      if (!error) { document.getElementById('recordForm').reset(); closeLogModal(); playHaptic('success'); loadSquadData(); }
-      else { alert('Failed to log match.'); }
-    }
-
-    function openScoreboardModal() { document.getElementById('scoreboardModal').classList.remove('hidden'); }
-    function closeScoreboardModal() { document.getElementById('scoreboardModal').classList.add('hidden'); }
-    function pointTo(t) { if(t==='A') { idxA++; if(idxA>3){gA++;idxA=0;idxB=0;} } else { idxB++; if(idxB>3){gB++;idxA=0;idxB=0;} } document.getElementById('scoreTeamA').innerText=pPoints[idxA]; document.getElementById('scoreTeamB').innerText=pPoints[idxB]; document.getElementById('gamesTeamA').innerText=gA; document.getElementById('gamesTeamB').innerText=gB; document.getElementById('puntoDeOroBadge').classList.toggle('hidden', !(idxA===3&&idxB===3)); }
-    function resetScoreboard() { idxA=0;idxB=0;gA=0;gB=0; pointTo('R'); }
-
-    function shareWhatsApp() {
-      navigator.clipboard.writeText("VÍBORA PRO: Lineup copied.").then(() => alert('📋 Roster copied to clipboard.'));
-    }
-
-    window.onload = initApp;
+    // Modal Control
+    function openGenesisModal() { document.getElementById('genesisModal').classList.remove('hidden'); }
+    function closeGenesisModal() { document.getElementById('genesisModal').classList.add('hidden'); }
   </script>
 </body>
 </html>
